@@ -21,6 +21,17 @@ The `scripts` directory contains:
 
 - `position_report.lua`: A Lua script for reporting vehicle position data. This script is used within the ArduPilot environment to track and report the position of the sea drone.
 
+## Setting up SITL
+
+Before running the simulation, you need to set up the Software In The Loop (SITL) environment. Please follow the official ArduPilot documentation for setting up SITL on Linux:
+
+[Setting up SITL on Linux](https://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html)
+
+This guide will walk you through:
+- Installing required dependencies
+- Setting up the build environment
+- Configuring SITL for your system
+
 ## Running SITL Simulation
 
 The repository includes a `run_sim.sh` script to launch ArduPilot's Software In The Loop (SITL) simulation for a motorboat vehicle.
@@ -51,7 +62,6 @@ The script will:
   - Speedup: 1x
   - Serial2 interface: UART on /dev/ttyUSB1
   - Console and map interfaces enabled
-
 
 3. Arm
 
