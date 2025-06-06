@@ -6,7 +6,7 @@
 
 local file_name = 'raw serial dump.txt'
 local file_name_plain = 'serial dump.txt'
-local baud_rate = 57600 -- baud rate for the serial port
+local baud_rate = 19200 -- baud rate for the serial port
 print("Starting serial dump script") -- debug print
 
 -- find the serial first (0) scripting serial port instance
