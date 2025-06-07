@@ -77,7 +77,7 @@ The `scripts` directory contains:
 
   Note: This script is particularly useful for missions requiring automatic mode switching after waypoint completion, such as long-duration operations or missions requiring different behaviors at different stages.
 
-- `serial_vedirect.lua` : A Lua script that reads VE.Direct protocol data from a serial port and sends formatted values to the Ground Control Station (GCS). This script is particularly useful for monitoring solar and battery data from Victron Energy devices.
+- `serial_vedirect.lua` : A Lua script that reads voltage and current data of a Smartsolar charge controller using VE.Direct protocol data from a serial port and sends formatted values to the Ground Control Station (GCS). This script is particularly useful for monitoring solar and battery data from Victron Energy devices.
 
   Features:
   - Reads VE.Direct protocol data at 19200 baud rate
@@ -96,6 +96,7 @@ The `scripts` directory contains:
   - Victron Energy device with VE.Direct output
   - Serial connection to Scripting Serial Port 0
   - Proper voltage level conversion if needed (Victron devices typically use 5V logic)
+  - ![vedirect-serial-pins.png](images/vedirect-serial-pins.png)
 
   Output Format:
   ```
@@ -169,7 +170,8 @@ To arm or disarm the vehicle in SITL using MAVProxy, use the following commands 
   disarm
   ```
 
-![MAVProxy Arming Interface](images/Screenshot%20from%202025-06-04%2019-39-56.png)
+
+![MAVProxy Arming Interface](images/mavproxy-map.png)
 
 For more details and advanced options (such as enabling/disabling specific arming checks), see the official ArduPilot documentation: [Arming and Disarming with MAVProxy](https://ardupilot.org/mavproxy/docs/uav_configuration/arming.html)
 
@@ -180,11 +182,16 @@ The SITL simulation uses several files in the simulation directory:
 - `motorboat.parm`: Vehicle-specific parameters
 - Other configuration files as needed
 
-### Alternative Configurations
 
+
+### Alternative Configurations
 The script includes commented-out alternative configurations for:
 - Different serial interfaces
 - CSV-based simulation
 - Different USB device paths
 
 To use an alternative configuration, uncomment the desired line and comment out the current active configuration.
+
+
+### Python Scripts in /src
+see [src/README.md](src/README.md) for detailed documentation of available python scripts and usage instructions.

@@ -15,6 +15,7 @@ if __name__ == '__main__':
     ve = Vedirect(PORT, TIMEOUT)
     # print(ve.read_data_callback(print_data_callback))
     packet = ve.read_data_single()
+    print(packet)
     
     # Extract values from packet, defaulting to 0 if not present
     solar_power = float(packet.get('PPV', 0))  #  W
