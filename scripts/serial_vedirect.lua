@@ -48,8 +48,19 @@
 -- - Handles special characters and hex markers
 -- - Maintains protocol synchronization
 
+local SCRIPT_NAME            = 'serial_vedirect.lua'
+local RUN_INTERVAL_MS        = 200
 
-local baud_rate = 19200                   -- baud rate for the serial port
+-- https://mavlink.io/en/messages/common.html#MAV_SEVERITY
+local MAV_SEVERITY_EMERGENCY = 0
+local MAV_SEVERITY_ALERT     = 1
+local MAV_SEVERITY_CRITICAL  = 2
+local MAV_SEVERITY_ERROR     = 3
+local MAV_SEVERITY_WARNING   = 4
+local MAV_SEVERITY_NOTICE    = 5
+local MAV_SEVERITY_INFO      = 6
+
+local baud_rate              = 19200      -- baud rate for the serial port
 print("Starting VE.Direct reader script") -- debug print
 
 -- find the serial first (0) scripting serial port instance
@@ -66,6 +77,7 @@ local WAIT_HEADER = 2
 local IN_KEY = 3
 local IN_VALUE = 4
 local IN_CHECKSUM = 5
+local IN_GET = 6
 
 -- VE.Direct parser state
 local header1 = string.byte('\r')
@@ -78,9 +90,18 @@ local bytes_sum = 0
 local state = WAIT_HEADER
 local dict = {}
 
+
+-- wrapper for gcs:send_text()
+local function gcs_msg(severity, txt)
+  gcs:send_text(severity, string.format('%s: %s', SCRIPT_NAME, txt))
+end
+
+
 function input(byte)
   if byte == hexmarker and state ~= IN_CHECKSUM then
     state = HEX
+    key = ''
+    value = ''
   end
 
   if state == WAIT_HEADER then
@@ -127,42 +148,78 @@ function input(byte)
     end
   elseif state == HEX then
     bytes_sum = 0
+    value = value .. string.char(byte)
     if byte == header2 then
       state = WAIT_HEADER
+    elseif value == ':7' then
+      state = IN_GET
+    end
+  elseif state == IN_GET then
+    bytes_sum = bytes_sum + byte
+    value = value .. string.char(byte)
+    if byte == header2 then
+      state = WAIT_HEADER
+      dict['Get'] = value
+      -- print(string.format('IN_GET: %s', dict['Get']))
     end
   else
     error("Invalid state")
   end
 end
 
-local last_sent = 0
+-- update code
+--  encode the ve-direct get comand for the history
+local hist_list = { ':7501000EE\n', ':7511000ED\n', ':7521000EC\n', ':7531000EB\n',
+  ':7541000EA\n', ':7551000E9\n', ':7561000E8\n', ':7571000E7\n',
+  ':7581000E6\n', ':7591000E5\n', ':75A1000E4\n', ':75B1000E3\n',
+  ':75C1000E2\n', ':75D1000E1\n', ':75E1000E0\n', ':75F1000DF\n', }
+
+
+local count = 0
 function update() -- this is the loop which periodically runs
   local n_bytes = port:available()
-  while n_bytes > 0 do
+
+  local bytes_target = n_bytes - math.min(n_bytes, 128)
+  if n_bytes > 256 then
+    gcs:send_text(MAV_SEVERITY_WARNING,
+      string.format(" %s: Serial Bytes: %d", SCRIPT_NAME, n_bytes:toint()))
+  end
+
+  -- limit the number of bytes to process to 128
+  while n_bytes > bytes_target do
     local byte = port:read()
     n_bytes = n_bytes - 1
 
     local packet = input(byte)
     if packet then
-      last_sent = last_sent + 1
+      count = count + 1
       -- Extract and print values
       local solar_power = tonumber(packet.PPV or 0)
       local solar_voltage = tonumber(packet.VPV or 0) / 1000.0
       local solar_current = solar_power / solar_voltage
       local battery_voltage = tonumber(packet.V or 0) / 1000.0
       local battery_current = tonumber(packet.I or 0) / 1000.0
+      local history = packet.Get or ''
 
       -- send every 5th time
-      if last_sent % 5 == 0 then
-        gcs:send_text(6,
-          string.format("PPV: %.2f W, VPV: %.2f V, IPV: %.2f A, BV: %.2f, BI: %.2f A", solar_power, solar_voltage,
-            solar_current, battery_voltage, battery_current))
+      if count % 5 == 0 then
+        gcs:send_text(MAV_SEVERITY_INFO,
+          string.format("PPV: %.2f W, VPV: %.2f V, IPV: %.2f A, VB: %.2f, IB: %.2f A",
+            solar_power, solar_voltage, solar_current, battery_voltage, battery_current))
+        -- gcs_msg(MAV_SEVERITY_INFO, string.format("History: %s", history))
+        gcs:send_text(MAV_SEVERITY_INFO, string.format("History: %s", history))
+
+        local get_history = hist_list[count / 5 % #hist_list]
+
+        local len_written = port:writestring(get_history) -- send a command get todays history to the solar inverter
       end
     end
   end
 
 
-  return update, 1000 -- reschedules the loop
+  return update, RUN_INTERVAL_MS -- reschedules the loop
 end
+
+gcs_msg(MAV_SEVERITY_INFO, 'Initialized.')
 
 return update() -- run immediately before starting to reschedule

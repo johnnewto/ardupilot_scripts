@@ -18,11 +18,13 @@ class Vedirect:
         self.dict = {}
 
 
-    (HEX, WAIT_HEADER, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(5)
+    (HEX, WAIT_HEADER, IN_KEY, IN_VALUE, IN_CHECKSUM, IN_GET) = range(6)
 
     def input(self, byte):
         if byte == self.hexmarker and self.state != self.IN_CHECKSUM:
             self.state = self.HEX
+            self.key = '';
+            self.value = '';
             
         
         if self.state == self.WAIT_HEADER:
@@ -63,10 +65,23 @@ class Vedirect:
                 return self.dict
             else:
                 self.bytes_sum = 0
+
         elif self.state == self.HEX:
             self.bytes_sum = 0
+            self.value += chr(byte)
+            if self.value == ':7':
+                self.state = self.IN_GET
+            elif byte == self.header2:
+                self.state = self.WAIT_HEADER
+                # print('hex = ', self.value)
+
+        elif self.state == self.IN_GET:
+            self.bytes_sum += byte
+            self.value += chr(byte)
             if byte == self.header2:
                 self.state = self.WAIT_HEADER
+                self.dict['Get'] = self.value;
+                # print('get = ', self.value)
         else:
             raise AssertionError()
 
@@ -92,3 +107,41 @@ class Vedirect:
 
     
 
+if __name__ == '__main__':
+    import time
+
+    # Configuration
+    PORT = '/dev/ttyUSB1'
+    BAUDRATE = 19200  # Default baud rate for VE.Direct protocol
+    TIMEOUT = 1       # Timeout in seconds for serial communication
+
+    ve = Vedirect(PORT, TIMEOUT)
+    #  encode the ve-direct get comand for the history
+    hist_list = [':7501000EE\n', ':7511000ED\n', ':7521000EC\n', ':7531000EB\n', 
+                 ':7541000EA\n', ':7551000E9\n', ':7561000E8\n', ':7571000E7\n', 
+                 ':7581000E6\n', ':7591000E5\n', ':75A1000E4\n', ':75B1000E3\n',
+                 ':75C1000E2\n', ':75D1000E1\n', ':75E1000E0\n', ':75F1000DF\n',
+    ]
+    
+    count = 0
+    while True:
+
+        # print(count)
+        data = ve.ser.read()
+        if data:
+            # print(data.decode(), end='')
+            for single_byte in data:
+                packet = ve.input(single_byte)
+                if (packet != None):
+                    break
+
+            if packet:
+                count += 1
+                print(packet)
+                get = hist_list[count % len(hist_list)]
+                ve.ser.write(str.encode(get))
+                # print('++++++++++++++++sent', get)
+
+        else:
+            print("No data")
+            time.sleep(0.1)

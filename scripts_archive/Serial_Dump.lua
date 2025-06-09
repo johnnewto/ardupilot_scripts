@@ -6,20 +6,20 @@
 
 local file_name = 'raw serial dump.txt'
 local file_name_plain = 'serial dump.txt'
-local baud_rate = 19200 -- baud rate for the serial port
+local baud_rate = 19200              -- baud rate for the serial port
 print("Starting serial dump script") -- debug print
 
 -- find the serial first (0) scripting serial port instance
 -- SERIALx_PROTOCOL 28
-local port = assert(serial:find_serial(0),"Could not find Scripting Serial Port 0")
+local port = assert(serial:find_serial(0), "Could not find Scripting Serial Port 0")
 print("Scripting Serial First Port found") -- debug print
 -- local port = assert(serial:find_serial(1),"Could not find Scripting Serial Port 1")
 -- print("Scripting Serial Second Port found") -- debug print
 
 -- make a file
-local file = assert(io.open(file_name, "w"),"Could not create file " .. file_name)
+local file = assert(io.open(file_name, "w"), "Could not create file " .. file_name)
 file:close()
-file = assert(io.open(file_name_plain, "w"),"Could not create file " .. file_name)
+file = assert(io.open(file_name_plain, "w"), "Could not create file " .. file_name)
 file:close()
 
 -- begin the serial port
@@ -27,32 +27,36 @@ port:begin(baud_rate)
 port:set_flow_control(0)
 
 function update() -- this is the loop which periodically runs
-
+  -- local len_written = port:writestring(':7501000EE' .. '\n')
+  -- print(string.format(":7501000EE, len_written: %d", len_written))
   local n_bytes = port:available()
+  print(string.format("Bytes available: %d", n_bytes:toint()))
+
   while n_bytes > 0 do
-    print(string.format("Bytes available: %d", n_bytes:toint()))
     -- only read a max of 515 bytes in a go
     -- this limits memory consumption
     local buffer = {} -- table to buffer data
     local bytes_target = n_bytes - math.min(n_bytes, 512)
     while n_bytes > bytes_target do
-      table.insert(buffer,port:read())
+      local byte = port:read()
+      table.insert(buffer, byte)
       n_bytes = n_bytes - 1
     end
-
+    print(string.char(table.unpack(buffer)))
     -- write as decoded
     file = io.open(file_name, "a")
-    file:write(table.concat(buffer,',') .. '\n')
+    file:write(table.concat(buffer, ',') .. '\n')
     file:close()
 
     -- write as plain text
     file = io.open(file_name_plain, "a")
     file:write(string.char(table.unpack(buffer)))
     file:close()
-
   end
 
   return update, 1000 -- reschedules the loop
 end
 
-return update() -- run immediately before starting to reschedule
+local len_written = port:writestring(':7501000EE' .. '\n') -- send a command get todays history to the solar inverter
+print(string.format(":7501000EE, len_written: %d", len_written))
+return update()                                            -- run immediately before starting to reschedule
