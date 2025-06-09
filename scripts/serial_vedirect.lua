@@ -63,7 +63,7 @@ local MAV_SEVERITY_INFO      = 6
 local baud_rate              = 19200      -- baud rate for the serial port
 print("Starting VE.Direct reader script") -- debug print
 
--- find the serial first (0) scripting serial port instance
+-- Finds the serial port configured for scripting (instance 0 is the first port with SERIALx_PROTOCOL = 28, instance 1 is the second, etc.).
 local port = assert(serial:find_serial(0), "Could not find Scripting Serial Port 0")
 print("Scripting Serial First Port found") -- debug print
 
@@ -169,13 +169,20 @@ end
 
 -- update code
 --  encode the ve-direct get comand for the history
+-- 0x1050 ... 0x106E (0x1050=today, 0x1051=yesterday, ...) but little endian
 local hist_list = { ':7501000EE\n', ':7511000ED\n', ':7521000EC\n', ':7531000EB\n',
   ':7541000EA\n', ':7551000E9\n', ':7561000E8\n', ':7571000E7\n',
   ':7581000E6\n', ':7591000E5\n', ':75A1000E4\n', ':75B1000E3\n',
-  ':75C1000E2\n', ':75D1000E1\n', ':75E1000E0\n', ':75F1000DF\n', }
+  ':75C1000E2\n', ':75D1000E1\n', ':75E1000E0\n', ':75F1000DF\n',
+  ':7601000DE\n', ':7611000DD\n', ':7621000DC\n', ':7631000DB\n',
+  ':7641000DA\n', ':7651000D9\n', ':7661000D8\n', ':7671000D7\n',
+  ':7681000D6\n', ':7691000D5\n', ':76A1000D4\n', ':76B1000D3\n',
+  ':76C1000D2\n', ':76D1000D1\n', ':76E1000D0\n'
+}
 
 
 local count = 0
+local skip_count = 2
 function update() -- this is the loop which periodically runs
   local n_bytes = port:available()
 
@@ -202,15 +209,14 @@ function update() -- this is the loop which periodically runs
       local history = packet.Get or ''
 
       -- send every 5th time
-      if count % 5 == 0 then
+      if count % skip_count == 0 then
         gcs:send_text(MAV_SEVERITY_INFO,
           string.format("PPV: %.2f W, VPV: %.2f V, IPV: %.2f A, VB: %.2f, IB: %.2f A",
             solar_power, solar_voltage, solar_current, battery_voltage, battery_current))
         -- gcs_msg(MAV_SEVERITY_INFO, string.format("History: %s", history))
         gcs:send_text(MAV_SEVERITY_INFO, string.format("History: %s", history))
 
-        local get_history = hist_list[count / 5 % #hist_list]
-
+        local get_history = hist_list[count / skip_count % #hist_list]
         local len_written = port:writestring(get_history) -- send a command get todays history to the solar inverter
       end
     end
