@@ -15,11 +15,15 @@ ln -s ~/repos/ardupilot_scripts/scripts ~/repos/ardupilot/scripts
 
 This creates a symbolic link that makes the scripts in this repository available to ArduPilot while maintaining the ability to version control them separately.
 
+
+![Scripts Directory Symlink](images/scripts_symlink.png)
+
 ### Available Scripts
 
 The `scripts` directory contains:
 
-- `auto_position.lua`: A Lua script for automated vehicle position management and mode control. This script provides intelligent waypoint-based navigation control with automatic mode switching capabilities.
+#### auto_position.lua: 
+- A Lua script for automated vehicle position management and mode control. This script provides intelligent waypoint-based navigation control with automatic mode switching capabilities.
 
   Features:
   - Monitors vehicle position relative to waypoints
@@ -76,8 +80,8 @@ The `scripts` directory contains:
   5. Continues operation in automatic mode
 
   Note: This script is particularly useful for missions requiring automatic mode switching after waypoint completion, such as long-duration operations or missions requiring different behaviors at different stages.
-
-- `serial_vedirect.lua` : A Lua script that reads voltage and current data of a Smartsolar charge controller using VE.Direct protocol data from a serial port and sends formatted values to the Ground Control Station (GCS). This script is particularly useful for monitoring solar and battery data from Victron Energy devices.
+#### serial_vedirect.lua
+- A Lua script that reads voltage and current data of a Smartsolar charge controller using VE.Direct protocol data from a serial port and sends formatted values to the Ground Control Station (GCS). This script is particularly useful for monitoring solar and battery data from Victron Energy devices.
 
   Features:
   - Reads VE.Direct protocol data at 19200 baud rate
@@ -110,6 +114,31 @@ The `scripts` directory contains:
   - BI: Battery Current in Amperes
 
   Note: The script uses the VE.Direct protocol state machine to ensure accurate data parsing and validation.
+
+
+#### relay_on_off.lua
+  - A Lua script that toggles a relay on and off every 2 seconds. This script is useful for controlling devices such as pumps, lights, or other peripherals connected to the relay.
+
+  Features:
+  - Toggles a specified relay (default is relay 5) on and off
+  - Runs in a loop with a 2-second interval
+  - Prints debug messages to the console
+
+  Settings:
+  - RELAY5_PIN :  54           (GPIO54 Set output S5 to GPIO )
+  - RELAY5_FUNCTION : Relay
+  - RC9_OPTION  :  Relay 5     (on/off with RC9 [SA Switch])
+
+  Usage:
+  1. Load the script in ArduPilot
+  2. The script will automatically start toggling the relay every 2 seconds
+  3. To change the relay number, modify the `RELAY_NUM` variable in the script
+
+  Note: Ensure that the relay is properly connected to the vehicle's hardware and configured in ArduPilot.
+  Note: The relay number is zero-indexed in ArduPilot, so relay 5 in the script corresponds to relay 4 in the code.
+  ```lua
+  local RELAY_NUM = 4                  -- this maps to relay 5 (in code ArduPilot relays are zero-indexed)
+  ```
 
 ## Setting up SITL
 
@@ -195,3 +224,39 @@ To use an alternative configuration, uncomment the desired line and comment out 
 
 ### Python Scripts in /src
 see [src/README.md](src/README.md) for detailed documentation of available python scripts and usage instructions.
+
+
+### To list the scripts on a real hardwate 
+To list the scripts available on a real hardware, you can use the following command in the MAVProxy console:
+
+```bash
+ftp list
+```
+
+```bash
+HOLD> Listing /
+ D @ROMFS
+ D @SYS
+ D APM
+ D System Volume Information
+   FREESPAC.E	4293926912
+Total size 4193288.00 kByte
+```
+
+```bash
+ftp list APM/scripts
+```
+
+```bash
+HOLD> Listing APM/scripts
+   rover-quicktune.lua	22283
+   serial_vedirect.lua	7517
+Total size 29.10 kByte
+
+```
+To upload a script to the ArduPilot scripts directory, you can use the following command in the MAVProxy console:
+
+```bash
+ftp put /home/john/repos/ardupilot_scripts/scripts/relay_on_off.lua  APM/scripts/relay_on_off.lua
+```
+
