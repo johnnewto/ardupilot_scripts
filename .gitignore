@@ -19,6 +19,8 @@ __pycache__/
 *.bin
 *.tlog
 *.parm
+*.raw
+
 
 # Environment files
 .env
